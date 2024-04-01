@@ -1,0 +1,55 @@
+extract obj_props
+
+off_x = 30
+off_y = 1
+
+image = $.readfile("out.json", "json")
+
+avoid_1001 = (g) => 9999 if g == 1001 else g
+
+for i in 0..image.length {
+    row = image[i]
+
+    for j in 0..row.length {
+        block = row[j]
+        [h1, s1, v1] = block[0]
+        [h2, s2, v2] = block[1]
+
+        len = row.length
+        idx = j + len * i
+
+        o = obj{
+            OBJ_ID: 211,
+            X: off_x + j * 2,
+            Y: off_y + (image.length - i) * 2,
+            57: "1001." + @string(avoid_1001(idx + 1)),
+            SCALING: 0.01,
+            135: true,
+        }
+
+        $.add(obj{
+            2: "0;" + @string(o) + ";",
+            1: 0,
+        })
+
+        if j != row.length-1 && i != image.length-1 {
+            $.add(obj{
+                OBJ_ID: 2903,
+                X: -90, Y: 90,
+                203: avoid_1001(idx + 1),
+                204: avoid_1001(idx + 2),
+                205: avoid_1001(idx + len + 1),
+                206: avoid_1001(idx + len + 2),
+                207: true,
+                209: -idx,
+                41: true,
+                42: true,
+                43: @string(h1/255*360)+"a"+@string(s1/255)+"a"+@string(v1/255)+"a0a0",
+                44: @string(h2/255*360)+"a"+@string(s2/255)+"a"+@string(v2/255)+"a0a0",
+                COLOR: 1c,
+            })
+        }
+    }
+}
+
+1c.set(rgb(1, 0, 0))
