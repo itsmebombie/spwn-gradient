@@ -1,26 +1,29 @@
 
-IMAGE_PATH = R"image.png"
-BLOCK_SIZE = 4 # for display only, not in gd
-LIMIT = 9998
+PATH = R"grunt.mp4"
+BLOCK_SIZE = 4 # for display only, not in gd (i think)
+GROUP_LIMIT = 5000
 
 
 
 # ignore bad code
+import os
 import cv2
+import shutil
 import numpy as np
 import colorsys
+
 
 def lerp(_a, _b, t):
     a = float(_a)
     b = float(_b)
     return a + (b - a) * t
 
+
 # thanks chatgpt
 def resize_under_limit(original_shape, limit):
     height, width = original_shape
     aspect_ratio = width / height
     
-    # Ensure the dimensions are within bounds
     new_height = int((limit / aspect_ratio) ** 0.5)
     new_width = int(new_height * aspect_ratio)
     
@@ -34,7 +37,7 @@ def gen_image(img):
 
 
     y_size, x_size = image.shape[:2]
-    y_size_grad, x_size_grad = resize_under_limit((y_size, x_size), LIMIT)
+    y_size_grad, x_size_grad = resize_under_limit((y_size, x_size), GROUP_LIMIT)
     image = cv2.cvtColor(
         cv2.resize(image, (x_size_grad * BLOCK_SIZE, y_size_grad * BLOCK_SIZE), 
                    interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)
@@ -50,11 +53,12 @@ def gen_image(img):
             first_column = image[y:y + BLOCK_SIZE, x]
             last_column = image[y:y + BLOCK_SIZE, x + BLOCK_SIZE-1]
 
-            new_image[i][j][0] = colorsys.rgb_to_hsv(*(np.mean(first_column, 0) / 255))
-            new_image[i][j][1] = colorsys.rgb_to_hsv(*(np.mean(last_column, 0) / 255))
+            new_image[i][j][0] = colorsys.rgb_to_hsv(*np.round(np.mean(first_column, 0) / 255, 1))
+            new_image[i][j][1] = colorsys.rgb_to_hsv(*np.round(np.mean(last_column, 0) / 255, 1))
             # print(new_image[i][j][0])
 
     return new_image
+
 
 def show_image(image):
     y_size_grad, x_size_grad = image.shape[:2]
@@ -77,8 +81,33 @@ def show_image(image):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-image = gen_image(cv2.imread(IMAGE_PATH))
-print(image.shape[:2], image.shape[0] * image.shape[1])
-with open("out.json", "w") as f:
-    f.write(str(np.multiply(image, 255).astype(np.uint8).tolist()).replace(" ", ""))
-show_image(image)
+
+
+# init output folder
+if os.path.isdir("output"):
+    shutil.rmtree("output")
+os.mkdir("output")
+
+vidcap = cv2.VideoCapture(PATH) # if its an image, its only gonna execute the loop once
+success, frame = vidcap.read()
+
+first_frame_res = resize_under_limit(frame.shape[:2], GROUP_LIMIT)
+print(first_frame_res, first_frame_res[0] * first_frame_res[1])
+
+with open("output/meta.json", "w") as f:
+    f.write(str([
+        1 / vidcap.get(cv2.CAP_PROP_FPS),
+        int(vidcap.get(cv2.CAP_PROP_FRAME_COUNT)) - 1,
+        first_frame_res[::-1]
+    ]).replace("(", "[").replace(")", "]"))
+
+curr_frame_idx = 0
+while success:
+    image = gen_image(frame)
+    # show_image(image)
+    
+    with open(f"output/frame{curr_frame_idx}.json", "w") as f:
+        f.write(str(np.multiply(image, 255).astype(np.uint8).tolist()).replace(" ", ""))
+    
+    curr_frame_idx += 1
+    success, frame = vidcap.read()

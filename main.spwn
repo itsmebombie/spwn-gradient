@@ -1,55 +1,111 @@
-extract obj_props
 
 off_x = 30
 off_y = 1
 
-image = $.readfile("out.json", "json")
 
+
+extract obj_props
+speed = 311.5
+
+[frametime, frames, [cols, rows]] = $.readfile("output/meta.json", "json")
+
+ayisjnajijoanoiajiajoan = 1001g // yeah bro 1001g is being used
 avoid_1001 = (g) => 9999 if g == 1001 else g
 
-for i in 0..image.length {
-    row = image[i]
+let groups_in_use = []
 
-    for j in 0..row.length {
-        block = row[j]
-        [h1, s1, v1] = block[0]
-        [h2, s2, v2] = block[1]
+let objects = ""
+let last_frame = []
+let frame = []
 
-        len = row.length
-        idx = j + len * i
+for k in 0..frames {
+    frame = $.readfile("output/frame" + @string(k) + ".json", "json")
+    $.print("frame ", k)
 
-        o = obj{
-            OBJ_ID: 211,
-            X: off_x + j * 2,
-            Y: off_y + (image.length - i) * 2,
-            57: "1001." + @string(avoid_1001(idx + 1)),
-            SCALING: 0.01,
-            135: true,
-        }
+    for i in 0..rows {
+        row = frame[i]
 
-        $.add(obj{
-            2: "0;" + @string(o) + ";",
-            1: 0,
-        })
+        for j in 0..cols {
+            block = row[j]
+            [h1, s1, v1] = block[0]
+            [h2, s2, v2] = block[1]
 
-        if j != row.length-1 && i != image.length-1 {
-            $.add(obj{
-                OBJ_ID: 2903,
-                X: -90, Y: 90,
-                203: avoid_1001(idx + 1),
-                204: avoid_1001(idx + 2),
-                205: avoid_1001(idx + len + 1),
-                206: avoid_1001(idx + len + 2),
-                207: true,
-                209: -idx,
-                41: true,
-                42: true,
-                43: @string(h1/255*360)+"a"+@string(s1/255)+"a"+@string(v1/255)+"a0a0",
-                44: @string(h2/255*360)+"a"+@string(s2/255)+"a"+@string(v2/255)+"a0a0",
-                COLOR: 1c,
+            len = cols
+            idx = j + len * i
+            group = avoid_1001(idx + 1)
+
+            if k > 0 {
+                // values from last frame
+                last_block = last_frame[i][j]
+                [lh1, ls1, lv1] = last_block[0]
+                [lh2, ls2, lv2] = last_block[1]
+                
+                // (same as last block)
+                is_same_first_color = !(h1 == lh1 && s1 == ls1 && v1 == lv1)
+                is_same_last_color = !(h1 == lh1 && s1 == ls1 && v1 == lv1)
+
+                if (is_same_first_color && is_same_last_color) && j != cols-1 && i != rows-1 {
+                    $.add(obj{
+                        OBJ_ID: 2903,
+                        X: off_x+k*frametime*speed, 
+                        Y: 300+idx,
+                        203: avoid_1001(idx + 1),
+                        204: avoid_1001(idx + 2),
+                        205: avoid_1001(idx + len + 1),
+                        206: avoid_1001(idx + len + 2),
+                        207: true,
+                        209: -idx,
+                        41: true,
+                        42: true,
+                        43: @string(h1/255*360)+"a"+@string(s1/255)+"a"+@string(v1/255)+"a0a0",
+                        44: @string(h2/255*360)+"a"+@string(s2/255)+"a"+@string(v2/255)+"a0a0",
+                        COLOR: 1c,
+                    })
+                }
+
+                continue
+            }
+
+            // idk why but this doesnt work when you add it directly using $.add()
+            objects += @string(obj{
+                OBJ_ID: 211,
+                X: off_x + j * 2,
+                Y: off_y + (rows - i) * 2,
+                57: "1001." + @string(group),
+                SCALING: 0.01,
+                135: true,
             })
+
+            if j != cols-1 && i != rows-1 {
+                $.add(obj{
+                    OBJ_ID: 2903,
+                    X: -90, Y: 90,
+                    203: group,
+                    204: avoid_1001(idx + 2),
+                    205: avoid_1001(idx + len + 1),
+                    206: avoid_1001(idx + len + 2),
+                    207: true,
+                    209: -idx,
+                    41: true,
+                    42: true,
+                    43: @string(h1/255*360)+"a"+@string(s1/255)+"a"+@string(v1/255)+"a0a0",
+                    44: @string(h2/255*360)+"a"+@string(s2/255)+"a"+@string(v2/255)+"a0a0",
+                    COLOR: 1c,
+                })
+            }
+
+            groups_in_use.push(group)
+            groups_in_use.push(avoid_1001(idx + len + 1))
+            groups_in_use.push(avoid_1001(idx + len + 2))
+            groups_in_use.push(avoid_1001(idx + 2))
         }
     }
+
+    last_frame = frame
 }
+
+$.add(obj{
+    1: "0;" + objects + "1,0",
+})
 
 1c.set(rgb(1, 0, 0))

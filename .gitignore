@@ -1,4 +1,5 @@
-out.json
+output
 *.png
 *.jpg
+*.mp4
 .vscode
